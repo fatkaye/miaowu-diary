@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>喵呜日记 · 只读版</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--blue:#007aff;--bg:#f5f5f7;--card:#fff;--text:#1d1d1f;--sub:#86868b;--radius:12px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro",Helvetica,Arial,sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:30px 20px}
+#app{max-width:600px;width:100%}
+header{text-align:center;margin-bottom:30px}h1{font-size:28px;font-weight:600;margin-bottom:6px}header p{color:var(--sub);font-size:15px}
+.cal{background:var(--card);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,.05);padding:20px;margin-bottom:24px}
+.cal header{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.cal h3{font-size:20px;font-weight:600}.cal button{background:none;border:none;font-size:22px;cursor:pointer;color:var(--blue)}
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:8px;font-size:13px;color:var(--sub);text-align:center;font-weight:600}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.days .day{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;border-radius:50%;font-size:15px;cursor:pointer;transition:.2s}
+.days .day:hover{background:#e5e5ea}.days .day.other{opacity:.3}.days .day.today{background:var(--blue);color:#fff}.days .day.has{background:#e3f2fd;color:var(--blue);font-weight:600}
+.diaryPage{background:var(--card);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,.05);padding:30px;display:none}
+.diaryPage h2{margin-bottom:10px;font-size:22px}.diaryPage .content{font-size:16px;white-space:pre-wrap}
+.actions{margin-top:15px}.actions button{border:none;padding:10px 20px;border-radius:var(--radius);font-size:15px;cursor:pointer;background:#e5e5ea;color:var(--text)}
+</style>
+</head>
+<body>
+<div id="app">
+    <header><h1>喵呜日记 🐱（只读）</h1><p>记录和猫咪的每一天</p></header>
+    <div id="calendar" class="cal"></div>
+    <div id="diaryPage" class="diaryPage">
+        <h2 id="diaryDate"></h2>
+        <div id="diaryContent" class="content"></div>
+        <div class="actions"><button onclick="backToCalendar()">返回</button></div>
+    </div>
+</div>
+<script>
+const fmt=d=>d.toISOString().slice(0,10);
+const monthNames='一月 二月 三月 四月 五月 六月 七月 八月 九月 十月 十一月 十二月'.split(' ');
+const weekdayNames='日 一 二 三 四 五 六'.split(' ');
+let diaries={}; // 会被 miaowu.json 覆盖
+let current={year:new Date().getFullYear(),month:new Date().getMonth()};
+let selectedDay='';
+
+/* 加载日记数据 */
+fetch('miaowu.json')
+  .then(r=>r.json())
+  .then(data=>{diaries=data;renderCalendar();})
+  .catch(()=>{alert('miaowu.json 加载失败，请确保文件在同一目录');});
+
+function renderCalendar(){
+    const {year,month}=current;
+    const first=new Date(year,month,1);
+    const start=new Date(first);
+    start.setDate(start.getDate()-first.getDay());
+    document.getElementById('calendar').innerHTML=`
+        <header>
+            <button onclick="prevMonth()">‹</button>
+            <h3>${year}年 ${monthNames[month]}</h3>
+            <button onclick="nextMonth()">›</button>
+        </header>
+        <div class="weekdays">${weekdayNames.map(w=>`<div>周${w}</div>`).join('')}</div>
+        <div class="days">${(()=>{
+            let html='';
+            for(let i=0;i<42;i++){
+                const d=new Date(start);d.setDate(start.getDate()+i);
+                const cls=['day'];
+                if(d.getMonth()!==month)cls.push('other');
+                if(fmt(d)===fmt(new Date()))cls.push('today');
+                if(diaries[fmt(d)])cls.push('has');
+                html+=`<div class="${cls.join(' ')}" onclick="openDiary('${fmt(d)}')">${d.getDate()}</div>`;
+            }
+            return html;
+        })()}</div>`;
+}
+function openDiary(day){
+    selectedDay=day;
+    document.getElementById('calendar').style.display='none';
+    document.getElementById('diaryPage').style.display='block';
+    document.getElementById('diaryDate').textContent=`${day.slice(0,4)}年${day.slice(5,7)}月${day.slice(8,10)}日（周${weekdayNames[new Date(day).getDay()]})`;
+    document.getElementById('diaryContent').textContent=diaries[day]||'没有内容';
+}
+function backToCalendar(){
+    document.getElementById('calendar').style.display='block';
+    document.getElementById('diaryPage').style.display='none';
+}
+function prevMonth(){current.month--;if(current.month<0){current.month=11;current.year--;}renderCalendar();}
+function nextMonth(){current.month++;if(current.month>11){current.month=0;current.year++;}renderCalendar();}
+renderCalendar();
+</script>
+</body>
+</html>
